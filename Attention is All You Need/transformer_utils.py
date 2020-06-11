@@ -6,7 +6,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 import math
-import numpy as np
 
 # Self-Attention
 
@@ -46,13 +45,15 @@ class MultiHeadAttention(nn.Module):
     Multi-Head Attention class as used in the paper "Attention is all you Need".
     Args:
         input_size (int): size of the input vector
-        repr_dim (int): size of the Query, Key and Value vectors
+        repr_dim (int): size of the output vector
         num_heads (int, optional): number of attention heads to use. defaults to 6.
+        force_linear (bool, optional): if to use reshaping layer (linear) for single head. defaults to False.
     '''
-    def __init__(self, input_size, repr_dim, num_heads=6):
+    def __init__(self, input_size, repr_dim, num_heads=6, force_linear=False):
         super().__init__()
         
-        if num_heads <= 0:
+        self.num_heads = num_heads
+        if self.num_heads <= 0:
             raise ValueError('num_heads can only be a natural number.')
                 
         self.heads = nn.ModuleList([SelfAttention(input_size, repr_dim) for i in range(num_heads)])
@@ -64,7 +65,9 @@ class MultiHeadAttention(nn.Module):
         for mod in self.heads:
             similarities = torch.cat((similarities, mod(x)), dim=1) # Shape: (num_words, n * repr_dim)
         
-        similarities = self.reshapeLinear(similarities) # Shape: (num_words, repr_dim) 
+        if self.num_heads is not 1 or force_linear:
+            similarities = self.reshapeLinear(similarities) # Shape: (num_words, repr_dim) 
+            
         return similarities
 
 
